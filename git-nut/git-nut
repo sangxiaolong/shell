@@ -1,0 +1,54 @@
+#!/bin/sh
+
+# the nut folder
+FOLDER=`git config nut.folder`
+
+if [ ! "$FOLDER" -o ! -d "$FOLDER" ]; then
+  FOLDER=""
+  # Running for the first time
+  if [ -d "$HOME/Nutstore" ]; then
+    DEFAULT="$HOME/Nutstore/git"
+  fi
+  echo "# git-nut: initial setup"
+  while [ ! "$FOLDER" ]; do
+    read -p "Where should git repositories be saved? [$DEFAULT] " -e FOLDER
+    if [ ! "$FOLDER" ]; then
+      FOLDER="$DEFAULT"
+      echo "Choosing default: $FOLDER"
+    fi
+  done
+
+  mkdir -p $FOLDER
+  if [ ! "$FOLDER" ]; then
+    echo "$FOLDER does not exist. Check that you have permissions to create it."
+    exit 1
+  fi
+
+  git config --global nut.folder "$FOLDER"
+  echo "Set $FOLDER as the location for your nut git clones"
+fi
+
+
+PROJECT_DIR=`git rev-parse --show-toplevel 2>/dev/null`
+if [ ! "$PROJECT_DIR" ]; then
+  echo "Run 'git nut' in a git repository to mirror it to $FOLDER/[repo-name].git/"
+  exit
+fi
+
+NUT_REPO=`git config --local nut.repo 2>/dev/null`
+if [ ! "$NUT_REPO" ]; then
+  PROJECT_NAME=`basename "$PROJECT_DIR"`
+  NUT_REPO="$FOLDER/$PROJECT_NAME.git"
+fi
+
+if [ ! -d "$NUT_REPO" ]; then
+  mkdir -p $NUT_REPO
+  (cd $NUT_REPO; git init --bare)
+fi
+
+if [ ! -d "$NUT_REPO" ]; then
+  echo "Could not create $NUT_REPO. Check that you have permissions to create it."
+  exit 1
+fi
+
+git push "$NUT_REPO" --mirror
